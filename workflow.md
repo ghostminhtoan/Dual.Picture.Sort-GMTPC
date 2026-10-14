@@ -36,3 +36,4 @@ Tài liệu quy tắc, tiêu chuẩn kỹ thuật và luồng xử lý cho dự 
   - Hỗ trợ di chuyển ngược lại (Unsort / Move back) nếu chọn nhầm.
   - Có khung Preview ảnh lớn xem chi tiết chất lượng cao khi click vào ảnh ở bất kỳ panel nào (hoặc zoom, so sánh).
   - Giao diện chuẩn dark mode hiện đại, mượt mà, hỗ trợ responsive thích ứng cả màn hình Desktop và Mobile (Android).
+

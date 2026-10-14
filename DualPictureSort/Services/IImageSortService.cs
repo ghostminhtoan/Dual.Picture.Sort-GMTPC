@@ -13,3 +13,4 @@ public interface IImageSortService
     Task<string> CopyImageAsync(string sourceFilePath, string targetDirectory);
     Task<bool> RevertOperationAsync(SortOperation operation);
 }
+

@@ -92,3 +92,4 @@ public partial class PictureItem : ObservableObject
         return $"{len:0.#} {sizes[order]}";
     }
 }
+
