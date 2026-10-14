@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="DualPictureSort.Android/DualPictureSort.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="DualPictureSort.Browser/DualPictureSort.Browser.csproj" />
+  <Project Path="DualPictureSort.Desktop/DualPictureSort.Desktop.csproj" />
+  <Project Path="DualPictureSort.iOS/DualPictureSort.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="DualPictureSort/DualPictureSort.csproj" />
+</Solution>

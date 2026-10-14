@@ -1,0 +1,406 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:DualPictureSort.ViewModels"
+             xmlns:models="using:DualPictureSort.Models"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="DualPictureSort.Views.MainView"
+             x:DataType="vm:MainViewModel">
+
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+        <!-- TOP TOOLBAR & CONTROLS -->
+        <Border Grid.Row="0"
+                Background="#23272E"
+                CornerRadius="8"
+                Padding="14"
+                Margin="0,0,0,12"
+                BoxShadow="0 4 10 0 #33000000">
+            <StackPanel Spacing="10">
+                <!-- App Title and Brand -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="Dual Picture Sort - GMTPC"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="#61AFEF" />
+                        <Border Background="#2C313C" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                            <TextBlock Text="v1.0 • Avalonia Multiplatform" FontSize="11" Foreground="#ABB2BF" />
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Content="↩️ Hoàn tác (Ctrl+Z)"
+                                Command="{Binding UndoCommand}"
+                                IsEnabled="{Binding CanUndo}"
+                                Background="#3E4451"
+                                Foreground="White"
+                                ToolTip.Tip="Khôi phục lại ảnh vừa chuyển" />
+                        <Button Content="🔄 Làm mới tất cả"
+                                Command="{Binding ReloadAllFoldersCommand}"
+                                Background="#3E4451"
+                                Foreground="White" />
+                    </StackPanel>
+                </Grid>
+
+                <Separator Background="#3E4451" Margin="0,2" />
+
+                <!-- Source Folder Row -->
+                <Grid ColumnDefinitions="160,*,Auto,Auto" VerticalAlignment="Center">
+                    <TextBlock Text="📁 Thư mục gốc:"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="#E5C07B" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SourceFolderPath, Mode=TwoWay}"
+                             PlaceholderText="Ví dụ: R:\comic\ranma fanart"
+                             Margin="4,0,8,0" />
+                    <Button Grid.Column="2"
+                            Content="📂 Chọn..."
+                            Command="{Binding PickSourceFolderCommand}"
+                            Background="#98C379"
+                            Foreground="#1E1E1E"
+                            FontWeight="Bold"
+                            Margin="0,0,6,0" />
+                    <Button Grid.Column="3"
+                            Content="🔍 Mở"
+                            Command="{Binding OpenSourceFolderCommand}"
+                            ToolTip.Tip="Mở thư mục trong Explorer" />
+                </Grid>
+
+                <!-- Target Folder Row -->
+                <Grid ColumnDefinitions="160,*,Auto,Auto" VerticalAlignment="Center">
+                    <TextBlock Text="✨ Thư mục đã lọc:"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="#98C379" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding TargetFolderPath, Mode=TwoWay}"
+                             PlaceholderText="Thư mục sorted (Mặc định: [Thư mục gốc]-sorted)"
+                             Margin="4,0,8,0" />
+                    <Button Grid.Column="2"
+                            Content="📂 Chọn..."
+                            Command="{Binding PickTargetFolderCommand}"
+                            Background="#61AFEF"
+                            Foreground="#1E1E1E"
+                            FontWeight="Bold"
+                            Margin="0,0,6,0" />
+                    <Button Grid.Column="3"
+                            Content="🔍 Mở"
+                            Command="{Binding OpenTargetFolderCommand}"
+                            ToolTip.Tip="Mở thư mục đã lọc trong Explorer" />
+                </Grid>
+
+                <!-- Options Row -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                    <CheckBox Content="⚡ Tự động tạo thư mục con '...-sorted'"
+                              IsChecked="{Binding AutoDeriveTargetFolder}"
+                              Foreground="#D19A66"
+                              Margin="0,0,24,0" />
+                    <RadioButton Content="Di chuyển ảnh (Move)"
+                                 IsChecked="{Binding IsMoveMode}"
+                                 Foreground="#E5C07B"
+                                 Margin="0,0,16,0" />
+                    <RadioButton Content="Sao chép ảnh (Copy)"
+                                 IsChecked="{Binding !IsMoveMode}"
+                                 Foreground="#E5C07B"
+                                 Margin="0,0,24,0" />
+                    <CheckBox Content="🚀 Chuyển ngay khi Click (1-Click Fast Sort)"
+                              IsChecked="{Binding AutoMoveOnClick}"
+                              Foreground="#E06C75"
+                              FontWeight="SemiBold"
+                              ToolTip.Tip="Click 1 lần là ảnh lập tức chuyển sang thư mục đã lọc" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- MAIN WORKSPACE: DUAL PANELS & PREVIEW -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,8,*,8,340">
+            <!-- LEFT PANEL: SOURCE FOLDER -->
+            <Border Grid.Column="0"
+                    Background="#1E2227"
+                    CornerRadius="8"
+                    Padding="10">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <!-- Left Header -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="THƯ MỤC GỐC"
+                                       FontWeight="Bold"
+                                       Foreground="#E5C07B"
+                                       FontSize="14" />
+                            <Border Background="#3E4451" CornerRadius="10" Padding="8,2">
+                                <TextBlock Text="{Binding SourceCount, StringFormat='{}{0} ảnh'}"
+                                           FontSize="11"
+                                           Foreground="#ABB2BF" />
+                            </Border>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Content="➡️ Chuyển sang Sorted"
+                                Command="{Binding MoveSourceToSortedCommand}"
+                                Background="#98C379"
+                                Foreground="#1E1E1E"
+                                FontWeight="Bold"
+                                Padding="10,4" />
+                    </Grid>
+
+                    <!-- Filter search -->
+                    <TextBox Grid.Row="1"
+                             Text="{Binding SourceSearchText, Mode=TwoWay}"
+                             PlaceholderText="🔎 Tìm tên file..."
+                             Margin="0,0,0,8" />
+
+                    <!-- Left Image List -->
+                    <ListBox Grid.Row="2"
+                             x:Name="SourceListBox"
+                             ItemsSource="{Binding SourceImages}"
+                             SelectedItem="{Binding SelectedSourceItem}"
+                             Background="Transparent"
+                             DoubleTapped="OnSourceListDoubleTapped">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:PictureItem">
+                                <Border Width="135" Height="170"
+                                        Margin="4"
+                                        Background="#282C34"
+                                        CornerRadius="6"
+                                        ClipToBounds="True"
+                                        ToolTip.Tip="{Binding FileName}">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <!-- Image Thumbnail -->
+                                        <Border Grid.Row="0" Background="#1B1D23" Margin="2">
+                                            <Panel>
+                                                <Image Source="{Binding Thumbnail}"
+                                                       Stretch="Uniform"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                                <TextBlock Text="Đang tải..."
+                                                           FontSize="10"
+                                                           Foreground="#5C6370"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding IsLoadingThumbnail}" />
+                                            </Panel>
+                                        </Border>
+
+                                        <!-- Metadata bar -->
+                                        <Border Grid.Row="1" Padding="6,4" Background="#21252B">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FileName}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#E6EDF3"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding Dimensions}"
+                                                               FontSize="10"
+                                                               Foreground="#5C6370" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding FileSizeFormatted}"
+                                                               FontSize="10"
+                                                               Foreground="#98C379" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- SPLITTER 1 -->
+            <GridSplitter Grid.Column="1" Background="#2C313C" ResizeDirection="Columns" />
+
+            <!-- RIGHT PANEL: SORTED FOLDER -->
+            <Border Grid.Column="2"
+                    Background="#1E2227"
+                    CornerRadius="8"
+                    Padding="10">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <!-- Right Header -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="ĐÃ LỌC (SORTED)"
+                                       FontWeight="Bold"
+                                       Foreground="#98C379"
+                                       FontSize="14" />
+                            <Border Background="#3E4451" CornerRadius="10" Padding="8,2">
+                                <TextBlock Text="{Binding SortedCount, StringFormat='{}{0} ảnh'}"
+                                           FontSize="11"
+                                           Foreground="#ABB2BF" />
+                            </Border>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Content="⬅️ Trả lại Gốc"
+                                Command="{Binding MoveSortedBackToSourceCommand}"
+                                Background="#E06C75"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                Padding="10,4" />
+                    </Grid>
+
+                    <!-- Filter search -->
+                    <TextBox Grid.Row="1"
+                             Text="{Binding SortedSearchText, Mode=TwoWay}"
+                             PlaceholderText="🔎 Tìm tên file..."
+                             Margin="0,0,0,8" />
+
+                    <!-- Right Image List -->
+                    <ListBox Grid.Row="2"
+                             x:Name="SortedListBox"
+                             ItemsSource="{Binding SortedImages}"
+                             SelectedItem="{Binding SelectedSortedItem}"
+                             Background="Transparent"
+                             DoubleTapped="OnSortedListDoubleTapped">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:PictureItem">
+                                <Border Width="135" Height="170"
+                                        Margin="4"
+                                        Background="#282C34"
+                                        CornerRadius="6"
+                                        ClipToBounds="True"
+                                        ToolTip.Tip="{Binding FileName}">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <!-- Image Thumbnail -->
+                                        <Border Grid.Row="0" Background="#1B1D23" Margin="2">
+                                            <Panel>
+                                                <Image Source="{Binding Thumbnail}"
+                                                       Stretch="Uniform"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                                <TextBlock Text="Đang tải..."
+                                                           FontSize="10"
+                                                           Foreground="#5C6370"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding IsLoadingThumbnail}" />
+                                            </Panel>
+                                        </Border>
+
+                                        <!-- Metadata bar -->
+                                        <Border Grid.Row="1" Padding="6,4" Background="#21252B">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FileName}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#E6EDF3"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                                    <TextBlock Text="{Binding Dimensions}"
+                                                               FontSize="10"
+                                                               Foreground="#5C6370" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding FileSizeFormatted}"
+                                                               FontSize="10"
+                                                               Foreground="#61AFEF" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- SPLITTER 2 -->
+            <GridSplitter Grid.Column="3" Background="#2C313C" ResizeDirection="Columns" />
+
+            <!-- PREVIEW INSPECTOR PANE -->
+            <Border Grid.Column="4"
+                    Background="#1E2227"
+                    CornerRadius="8"
+                    Padding="12">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Row="0"
+                               Text="🔎 XEM TRƯỚC CHI TIẾT"
+                               FontWeight="Bold"
+                               Foreground="#61AFEF"
+                               Margin="0,0,0,10" />
+
+                    <!-- High resolution preview box -->
+                    <Border Grid.Row="1"
+                            Background="#14161A"
+                            CornerRadius="6"
+                            ClipToBounds="True"
+                            BorderBrush="#3E4451"
+                            BorderThickness="1">
+                        <Panel>
+                            <Image Source="{Binding PreviewBitmap}"
+                                   Stretch="Uniform"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" />
+                            <TextBlock Text="Chưa chọn ảnh nào"
+                                       Foreground="#5C6370"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding PreviewBitmap, Converter={x:Static ObjectConverters.IsNull}}" />
+                        </Panel>
+                    </Border>
+
+                    <!-- Preview File Details -->
+                    <Border Grid.Row="2"
+                            Background="#282C34"
+                            CornerRadius="6"
+                            Padding="10"
+                            Margin="0,10,0,0">
+                        <StackPanel Spacing="6" DataContext="{Binding CurrentPreviewItem}">
+                            <TextBlock Text="{Binding FileName, FallbackValue='(Chưa chọn)'}"
+                                       FontWeight="Bold"
+                                       Foreground="#E5C07B"
+                                       TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Độ phân giải: " Foreground="#ABB2BF" FontSize="11" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Dimensions}" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Kích thước: " Foreground="#ABB2BF" FontSize="11" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FileSizeFormatted}" Foreground="#98C379" FontSize="11" FontWeight="SemiBold" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Ngày sửa: " Foreground="#ABB2BF" FontSize="11" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastModified, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Foreground="White" FontSize="11" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- BOTTOM STATUS BAR -->
+        <Border Grid.Row="2"
+                Background="#21252B"
+                CornerRadius="6"
+                Padding="10,6"
+                Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="#98C379"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1"
+                           Text="Phím tắt: Enter / Phím -> (Chuyển) | Double-Click (Chuyển/Trả) | Ctrl+Z (Undo)"
+                           Foreground="#5C6370"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
